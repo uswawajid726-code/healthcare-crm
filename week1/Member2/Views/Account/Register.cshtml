@@ -1,0 +1,177 @@
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+}
+
+<div class="auth-container">
+    <div class="auth-card glass-card animate-fade-in">
+        <div class="auth-header">
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Join the Healthcare CRM Platform</p>
+        </div>
+
+        <div id="alert-container" class="alert alert-danger" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span id="alert-message"></span>
+        </div>
+
+        <form id="register-form" novalidate>
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" id="username" class="form-input" placeholder="e.g. johndoe" required />
+                <div id="username-error" class="input-error-msg">Username is required (min 3 chars).</div>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" id="email" class="form-input" placeholder="e.g. john@example.com" required />
+                <div id="email-error" class="input-error-msg">Please enter a valid email address.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" class="form-input" placeholder="••••••••" required />
+                <div id="password-error" class="input-error-msg">Password must be at least 6 characters.</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Select Your Role</label>
+                <div class="role-selector">
+                    <div class="role-option">
+                        <input type="radio" id="role-patient" name="role" value="Patient" checked />
+                        <label for="role-patient" class="role-label">Patient</label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio" id="role-doctor" name="role" value="Doctor" />
+                        <label for="role-doctor" class="role-label">Doctor</label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio" id="role-admin" name="role" value="Admin" />
+                        <label for="role-admin" class="role-label">Admin</label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%;">
+                Register & Get Started
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account? <a href="/Account/Login">Sign In</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Check if user is already logged in
+        if (localStorage.getItem('token')) {
+            window.location.href = '/Home/Index';
+        }
+
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const usernameInput = document.getElementById('username');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const selectedRole = document.querySelector('input[name="role"]:checked').value;
+            
+            const usernameError = document.getElementById('username-error');
+            const emailError = document.getElementById('email-error');
+            const passwordError = document.getElementById('password-error');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+            
+            // Reset state
+            alertContainer.style.display = 'none';
+            usernameInput.classList.remove('invalid');
+            emailInput.classList.remove('invalid');
+            passwordInput.classList.remove('invalid');
+            usernameError.style.display = 'none';
+            emailError.style.display = 'none';
+            passwordError.style.display = 'none';
+            
+            let isValid = true;
+            
+            // Validate username
+            if (usernameInput.value.trim().length < 3) {
+                usernameInput.classList.add('invalid');
+                usernameError.style.display = 'block';
+                isValid = false;
+            }
+            
+            // Validate email
+            const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+            if (!emailRegex.test(emailInput.value.trim())) {
+                emailInput.classList.add('invalid');
+                emailError.style.display = 'block';
+                isValid = false;
+            }
+            
+            // Validate password
+            if (passwordInput.value.length < 6) {
+                passwordInput.classList.add('invalid');
+                passwordError.style.display = 'block';
+                isValid = false;
+            }
+            
+            if (!isValid) return;
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Creating Account...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: usernameInput.value.trim(),
+                        email: emailInput.value.trim(),
+                        password: passwordInput.value,
+                        role: selectedRole
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Registration failed.');
+                }
+
+                // Success: Save token and redirect
+                localStorage.setItem('token', result.data.token);
+                localStorage.setItem('user', JSON.stringify(result.data.user));
+                
+                // Show temporary success state
+                alertContainer.className = "alert alert-success";
+                alertMessage.innerText = "Registration successful! Redirecting...";
+                alertContainer.style.display = 'flex';
+                
+                setTimeout(() => {
+                    window.location.href = '/Home/Index';
+                }, 1000);
+
+            } catch (error) {
+                alertContainer.className = "alert alert-danger";
+                alertMessage.innerText = error.message;
+                alertContainer.style.display = 'flex';
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+            }
+        });
+    </script>
+}

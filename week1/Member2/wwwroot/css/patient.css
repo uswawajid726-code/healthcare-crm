@@ -1,0 +1,146 @@
+/* Patient Module CSS styles */
+
+.patient-container {
+    padding: var(--spacing-xl) 0;
+}
+
+/* Patient List Top Bar */
+.patient-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.search-container {
+    position: relative;
+    max-width: 400px;
+    width: 100%;
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.search-input {
+    padding-left: 42px;
+}
+
+/* Glassmorphism Patient Table */
+.patient-table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-glass);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.patient-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text-main);
+    text-align: left;
+    font-size: 0.95rem;
+}
+
+.patient-table th, .patient-table td {
+    padding: 18px 24px;
+}
+
+.patient-table th {
+    background: rgba(13, 21, 39, 0.7);
+    color: var(--color-primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    border-bottom: 1.5px solid var(--border-glass);
+}
+
+.patient-table tr {
+    border-bottom: 1px solid var(--border-glass);
+    transition: var(--transition-fast);
+}
+
+.patient-table tr:last-child {
+    border-bottom: none;
+}
+
+.patient-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Action button configurations */
+.actions-cell {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.btn-icon {
+    background: transparent;
+    border: 1px solid var(--border-glass);
+    border-radius: var(--border-radius-sm);
+    padding: 6px 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon-edit:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(14, 237, 198, 0.05);
+}
+
+.btn-icon-delete:hover {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+/* Grid layout for Patient forms */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.form-grid-full {
+    grid-column: 1 / -1;
+}
+
+/* Patient Detail Card on Dashboard */
+.patient-detail-card {
+    padding: var(--spacing-lg);
+    background: rgba(13, 21, 39, 0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.patient-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+}

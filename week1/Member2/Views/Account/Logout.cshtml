@@ -1,0 +1,33 @@
+@{
+    ViewData["Title"] = "Logging Out";
+    Layout = "_Layout";
+}
+
+<div class="auth-container">
+    <div class="auth-card glass-card animate-fade-in" style="text-align: center;">
+        <h1 class="auth-title">Signing Out</h1>
+        <p class="auth-subtitle">Please wait while we secure your session...</p>
+        <div style="margin-top: var(--spacing-lg);">
+            <div style="border: 3px solid rgba(0, 255, 213, 0.1); border-top: 3px solid var(--color-primary); border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        // Clear tokens client side
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        setTimeout(() => {
+            window.location.href = '/Account/Login';
+        }, 1000);
+    </script>
+}
