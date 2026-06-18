@@ -1,0 +1,185 @@
+@{
+    ViewData["Title"] = "Patients";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/patient.css" asp-append-version="true" />
+}
+
+<!-- Client-side authentication check -->
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container patient-container animate-fade-in">
+    <div class="patient-top-bar">
+        <div>
+            <h1 style="font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-main) 30%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Patient Directory
+            </h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">Manage and search patient records</p>
+        </div>
+        
+        <a href="/PatientView/Add" class="btn-primary" style="text-decoration: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: var(--spacing-sm);">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Patient
+        </a>
+    </div>
+
+    <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+        <div class="search-container">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="patient-search" class="form-input search-input" placeholder="Search patients by name, email or phone..." />
+        </div>
+    </div>
+
+    <div id="alert-container" class="alert alert-danger" style="display: none;">
+        <span id="alert-message"></span>
+    </div>
+
+    <div class="patient-table-wrapper">
+        <table class="patient-table" id="patients-table">
+            <thead>
+                <tr>
+                    <th>Patient Name</th>
+                    <th>Email Address</th>
+                    <th>Phone Number</th>
+                    <th>Date of Birth</th>
+                    <th>Gender</th>
+                    <th>Address</th>
+                    <th style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="patients-list-body">
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                        Loading patients...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPatients();
+
+            // Set up search bar debouncing/keyup
+            let searchTimeout;
+            document.getElementById('patient-search').addEventListener('input', function(e) {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    loadPatients(e.target.value.trim());
+                }, 300);
+            });
+        });
+
+        async function loadPatients(searchQuery = '') {
+            const token = localStorage.getItem('token');
+            const tbody = document.getElementById('patients-list-body');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+
+            try {
+                let url = '/api/patients';
+                if (searchQuery) {
+                    url += `?search=${encodeURIComponent(searchQuery)}`;
+                }
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/Account/Login';
+                    return;
+                }
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to fetch patients.');
+                }
+
+                tbody.innerHTML = '';
+                const patients = result.data;
+
+                if (patients.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: var(--spacing-xl) 0;">
+                                No patients found.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                patients.forEach(patient => {
+                    const dob = new Date(patient.dateOfBirth).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                    <div class="patient-avatar">
+                                        ${patient.firstName[0]}${patient.lastName[0]}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--text-main);">${patient.firstName} ${patient.lastName}</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">ID: #${patient.id}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="vertical-align: middle;">${patient.email}</td>
+                            <td style="vertical-align: middle;">${patient.phoneNumber}</td>
+                            <td style="vertical-align: middle;">${dob}</td>
+                            <td style="vertical-align: middle; text-transform: capitalize;">${patient.gender}</td>
+                            <td style="vertical-align: middle;">${patient.address || '<span style="color: var(--text-muted)">-</span>'}</td>
+                            <td style="vertical-align: middle;">
+                                <div class="actions-cell">
+                                    <a href="/PatientView/Edit/${patient.id}" class="btn-icon btn-icon-edit" title="Edit Patient">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+            } catch (error) {
+                alertContainer.style.display = 'block';
+                alertMessage.innerText = error.message;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--color-error); padding: var(--spacing-xl) 0;">
+                            Failed to load patient records.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    </script>
+}
