@@ -1,0 +1,154 @@
+@{
+    ViewData["Title"] = "Receptionist Dashboard";
+    Layout = "_Layout";
+}
+
+<!-- Client-side role enforcement backup -->
+<script>
+    const userStr = localStorage.getItem('user');
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    } else if (userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            if (user.role !== 'Receptionist') {
+                window.location.href = '/Account/UnauthorizedPage';
+            }
+        } catch (e) {
+            console.error("Error parsing user info:", e);
+        }
+    }
+</script>
+
+<div class="container animate-fade-in" style="padding: var(--spacing-xl) 0;">
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-xl);">
+        
+        <!-- Welcome Hero Banner -->
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(13, 21, 39, 0.7) 0%, rgba(139, 92, 246, 0.05) 100%); border-color: rgba(139, 92, 246, 0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-md);">
+                <div>
+                    <h1 style="font-size: 2.2rem; font-weight: 700; margin-bottom: var(--spacing-xs); background: linear-gradient(135deg, var(--text-main) 50%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        Front Desk Command
+                    </h1>
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">Welcome back, <span id="receptionist-name" style="color: var(--text-main); font-weight: 600;">Receptionist</span></p>
+                </div>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                    <span style="padding: 6px 16px; background: rgba(139, 92, 246, 0.15); border: 1px solid var(--color-accent); border-radius: 50px; color: var(--color-accent); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(139, 92, 246, 0.25);">
+                        Front Desk Staff
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receptionist Stats Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--spacing-lg);">
+            
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 3px solid var(--color-primary);">
+                <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px;">Daily Check-Ins</p>
+                <h3 style="font-size: 1.8rem; margin: var(--spacing-xs) 0; color: var(--color-primary);">9</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Completed today</p>
+            </div>
+
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 3px solid var(--color-accent);">
+                <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px;">New Registrations</p>
+                <h3 style="font-size: 1.8rem; margin: var(--spacing-xs) 0; color: var(--text-main);">4</h3>
+                <p style="font-size: 0.8rem; color: var(--color-primary);">Registered today</p>
+            </div>
+
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 3px solid var(--color-success);">
+                <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px;">Schedule Load</p>
+                <h3 style="font-size: 1.8rem; margin: var(--spacing-xs) 0; color: var(--color-success);">85%</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Moderate front desk volume</p>
+            </div>
+
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 3px solid var(--color-error);">
+                <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px;">Unscheduled Walk-ins</p>
+                <h3 style="font-size: 1.8rem; margin: var(--spacing-xs) 0; color: var(--color-error);">1</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Awaiting slot assignment</p>
+            </div>
+
+        </div>
+
+        <!-- Reception Control Panel Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: var(--spacing-lg);">
+            
+            <!-- Quick Actions -->
+            <div class="glass-card">
+                <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                    <div style="background: rgba(14, 237, 198, 0.1); border: 1.5px solid var(--color-primary); width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; color: var(--color-primary);">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.2rem; font-weight: 600;">Reception Tools</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Front desk management</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                    <a href="/PatientView" class="btn-primary" style="text-align: center; text-decoration: none; display: block; font-weight: 600;">
+                        Open Patient Registry
+                    </a>
+                    <button class="btn-secondary" onclick="alert('Redirecting to Appointment Scheduler (Under Construction)...')" style="width: 100%;">
+                        Book Appointment Slot
+                    </button>
+                    <button class="btn-secondary" onclick="alert('Billing console loaded.')" style="width: 100%;">
+                        Access Billing Console
+                    </button>
+                </div>
+            </div>
+
+            <!-- Front Desk Queue -->
+            <div class="glass-card">
+                <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                    <div style="background: rgba(139, 92, 246, 0.1); border: 1.5px solid var(--color-accent); width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; color: var(--color-accent);">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.2rem; font-weight: 600;">Today's Schedule</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Upcoming patient slot allocations</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: var(--spacing-md); font-size: 0.95rem;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: var(--spacing-xs);">
+                        <span style="font-weight: 500;">Alice Smith (10:15)</span>
+                        <span style="color: var(--color-success); font-weight: 500;">Completed</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: var(--spacing-xs);">
+                        <span style="font-weight: 500;">Bob Jones (10:30)</span>
+                        <span style="color: var(--color-primary); font-weight: 500;">In Progress</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: var(--spacing-xs);">
+                        <span style="font-weight: 500;">Charlie Brown (11:00)</span>
+                        <span style="color: var(--text-muted);">Pending</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Load receptionist name dynamically from localStorage
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user.fullName) {
+                    document.getElementById('receptionist-name').innerText = user.fullName;
+                }
+            } catch (e) {
+                console.error("Error setting receptionist name:", e);
+            }
+        }
+    </script>
+}
