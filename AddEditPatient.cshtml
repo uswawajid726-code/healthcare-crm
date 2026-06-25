@@ -1,0 +1,275 @@
+@page "{id:int?}"
+@model AddEditPatientModel
+@{
+    bool isEdit = Model.PatientId.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Patient" : "Add Patient";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4" style="max-width: 680px;">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="PatientList">Patients</a></li>
+            <li class="breadcrumb-item active">@(isEdit ? "Edit Patient" : "Add Patient")</li>
+        </ol>
+    </nav>
+
+    <h3 class="mb-4">@(isEdit ? "Edit Patient" : "Add New Patient")</h3>
+
+    <!-- Loading overlay (shown while submitting) -->
+    <div id="loadingOverlay"
+         style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7);
+                z-index:9999; display:none; align-items:center; justify-content:center;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Saving patient...</p>
+        </div>
+    </div>
+
+    <!-- Server-side validation summary -->
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Please fix the following errors:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Form -->
+    <form method="post" id="patientForm" novalidate>
+        <input type="hidden" asp-for="PatientId" />
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+
+                <!-- Full Name -->
+                <div class="mb-3">
+                    <label asp-for="Input.FullName" class="form-label fw-medium">
+                        Full Name <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Input.FullName"
+                           class="form-control"
+                           placeholder="e.g. Ahmed Ali"
+                           maxlength="100" />
+                    <span asp-validation-for="Input.FullName" class="text-danger small"></span>
+                    <div class="invalid-feedback" id="fullNameError"></div>
+                </div>
+
+                <!-- CNIC + Phone (2 cols) -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label asp-for="Input.Cnic" class="form-label fw-medium">
+                            CNIC <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="Input.Cnic"
+                               class="form-control"
+                               placeholder="42101-1234567-1"
+                               maxlength="15" />
+                        <span asp-validation-for="Input.Cnic" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Input.Phone" class="form-label fw-medium">
+                            Phone <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="Input.Phone"
+                               class="form-control"
+                               placeholder="03001234567"
+                               maxlength="11" />
+                        <span asp-validation-for="Input.Phone" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <!-- DOB + Gender -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label asp-for="Input.DateOfBirth" class="form-label fw-medium">
+                            Date of Birth <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="Input.DateOfBirth"
+                               type="date"
+                               class="form-control"
+                               max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <span asp-validation-for="Input.DateOfBirth" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Input.Gender" class="form-label fw-medium">
+                            Gender <span class="text-danger">*</span>
+                        </label>
+                        <select asp-for="Input.Gender" class="form-select">
+                            <option value="">-- Select --</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span asp-validation-for="Input.Gender" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <!-- Address -->
+                <div class="mb-3">
+                    <label asp-for="Input.Address" class="form-label fw-medium">Address</label>
+                    <textarea asp-for="Input.Address"
+                              class="form-control"
+                              rows="2"
+                              placeholder="Street, City, Province"
+                              maxlength="300"></textarea>
+                </div>
+
+                <!-- Blood Group -->
+                <div class="mb-4">
+                    <label asp-for="Input.BloodGroup" class="form-label fw-medium">Blood Group</label>
+                    <select asp-for="Input.BloodGroup" class="form-select" style="max-width: 180px;">
+                        <option value="">-- Unknown --</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span id="submitLabel">@(isEdit ? "Save Changes" : "Add Patient")</span>
+                        <span id="submitSpinner" class="spinner-border spinner-border-sm ms-1" style="display:none;" role="status"></span>
+                    </button>
+                    <a asp-page="PatientList" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        const form = document.getElementById('patientForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitSpinner = document.getElementById('submitSpinner');
+
+        // Client-side validation rules
+        const rules = {
+            'Input.FullName': {
+                required: true,
+                minLength: 2,
+                maxLength: 100,
+                messages: {
+                    required: 'Full name is required.',
+                    minLength: 'Name must be at least 2 characters.',
+                }
+            },
+            'Input.Cnic': {
+                required: true,
+                pattern: /^\d{5}-\d{7}-\d{1}$/,
+                messages: {
+                    required: 'CNIC is required.',
+                    pattern: 'CNIC must be in format: 42101-1234567-1',
+                }
+            },
+            'Input.Phone': {
+                required: true,
+                pattern: /^03\d{9}$/,
+                messages: {
+                    required: 'Phone number is required.',
+                    pattern: 'Phone must start with 03 and be 11 digits.',
+                }
+            },
+            'Input.DateOfBirth': {
+                required: true,
+                messages: { required: 'Date of birth is required.' }
+            },
+            'Input.Gender': {
+                required: true,
+                messages: { required: 'Please select a gender.' }
+            }
+        };
+
+        function validateField(name) {
+            const input = document.querySelector(`[name="${name}"]`);
+            const rule = rules[name];
+            if (!input || !rule) return true;
+
+            const val = input.value.trim();
+            let errorMsg = '';
+
+            if (rule.required && !val) {
+                errorMsg = rule.messages.required;
+            } else if (rule.minLength && val.length < rule.minLength) {
+                errorMsg = rule.messages.minLength;
+            } else if (rule.pattern && val && !rule.pattern.test(val)) {
+                errorMsg = rule.messages.pattern;
+            }
+
+            const feedback = input.nextElementSibling;
+            if (errorMsg) {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+                if (feedback) feedback.textContent = errorMsg;
+                return false;
+            } else {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                if (feedback) feedback.textContent = '';
+                return true;
+            }
+        }
+
+        // Validate on blur
+        Object.keys(rules).forEach(name => {
+            const input = document.querySelector(`[name="${name}"]`);
+            if (input) input.addEventListener('blur', () => validateField(name));
+        });
+
+        // Auto-format CNIC
+        const cnicInput = document.querySelector('[name="Input.Cnic"]');
+        if (cnicInput) {
+            cnicInput.addEventListener('input', function () {
+                let val = this.value.replace(/[^\d]/g, '');
+                if (val.length > 5) val = val.slice(0, 5) + '-' + val.slice(5);
+                if (val.length > 13) val = val.slice(0, 13) + '-' + val.slice(13);
+                this.value = val.slice(0, 15);
+            });
+        }
+
+        // Form submit
+        form.addEventListener('submit', function (e) {
+            let valid = true;
+            Object.keys(rules).forEach(name => {
+                if (!validateField(name)) valid = false;
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                const firstInvalid = form.querySelector('.is-invalid');
+                if (firstInvalid) firstInvalid.focus();
+                return;
+            }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitSpinner.style.display = 'inline-block';
+            document.getElementById('submitLabel').textContent = 'Saving...';
+        });
+    </script>
+}
