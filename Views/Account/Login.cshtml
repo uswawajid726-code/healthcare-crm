@@ -1,0 +1,156 @@
+@{
+    ViewData["Title"] = "Login";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+}
+
+<div class="auth-container">
+    <div class="auth-card glass-card animate-fade-in">
+        <div class="auth-header">
+            <h1 class="auth-title">Welcome Back</h1>
+            <p class="auth-subtitle">Sign in to access your dashboard</p>
+        </div>
+
+        <div id="alert-container" class="alert alert-danger" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span id="alert-message" style="margin-left: 8px;"></span>
+        </div>
+
+        <form id="login-form" novalidate class="needs-validation">
+            <div class="form-group mb-3">
+                <label for="usernameOrEmail" class="form-label">Email Address</label>
+                <input type="email" id="usernameOrEmail" class="form-input" placeholder="e.g. john@example.com" required />
+                <div class="invalid-feedback" id="email-error">Please enter a valid email address.</div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" class="form-input" placeholder="••••••••" required />
+                <div class="invalid-feedback" id="password-error">Password is required.</div>
+            </div>
+
+            <button type="submit" class="btn-primary w-100 mt-2">
+                Sign In
+            </button>
+        </form>
+
+        <div class="auth-footer mt-3">
+            Don't have an account? <a href="/Account/Register">Register Here</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Check if both localStorage token and cookie token are present
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        const token = localStorage.getItem('token');
+        const tokenCookie = getCookie('token');
+
+        if (token && tokenCookie) {
+            window.location.href = '/Home/Index';
+        } else if (token || tokenCookie) {
+            // Mismatch: clear both
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; samesite=strict; path=/;";
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const emailInput = document.getElementById('usernameOrEmail');
+            const passwordInput = document.getElementById('password');
+            
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+            
+            // Reset validation states
+            alertContainer.style.display = 'none';
+            emailInput.classList.remove('is-invalid');
+            passwordInput.classList.remove('is-invalid');
+            
+            let isValid = true;
+            
+            // Email format validation
+            const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+            if (!emailInput.value.trim()) {
+                emailInput.classList.add('is-invalid');
+                document.getElementById('email-error').innerText = "Email address is required.";
+                isValid = false;
+            } else if (!emailRegex.test(emailInput.value.trim())) {
+                emailInput.classList.add('is-invalid');
+                document.getElementById('email-error').innerText = "Please enter a valid email format.";
+                isValid = false;
+            }
+            
+            // Password validation
+            if (!passwordInput.value) {
+                passwordInput.classList.add('is-invalid');
+                document.getElementById('password-error').innerText = "Password is required.";
+                isValid = false;
+            }
+            
+            if (!isValid) return;
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Signing In...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        usernameOrEmail: emailInput.value.trim(),
+                        password: passwordInput.value
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Login failed.');
+                }
+
+                // Success: Save token to localStorage
+                localStorage.setItem('token', result.data.token);
+                localStorage.setItem('user', JSON.stringify(result.data.user));
+                
+                // Set the token as a cookie (so browser GET requests can authenticate on server side)
+                document.cookie = "token=" + result.data.token + "; path=/; samesite=strict";
+                
+                // Show temporary success state
+                alertContainer.className = "alert alert-success";
+                alertMessage.innerText = "Login successful! Redirecting...";
+                alertContainer.style.display = 'flex';
+                
+                setTimeout(() => {
+                    window.location.href = '/Home/Index';
+                }, 1000);
+
+            } catch (error) {
+                alertContainer.className = "alert alert-danger";
+                alertMessage.innerText = error.message;
+                alertContainer.style.display = 'flex';
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+            }
+        });
+    </script>
+}

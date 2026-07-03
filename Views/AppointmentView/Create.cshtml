@@ -1,0 +1,274 @@
+@{
+    ViewData["Title"] = "Schedule Appointment";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/patient.css" asp-append-version="true" />
+}
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container patient-container animate-fade-in" style="max-width: 800px;">
+    <div style="margin-bottom: var(--spacing-xl);">
+        <a href="/AppointmentView" style="color: var(--color-primary); text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm); font-size: 0.95rem; font-weight: 500;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Directory
+        </a>
+        <h1 style="font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-main) 30%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: var(--spacing-sm);">
+            Schedule Appointment
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Register a new patient consultation slot in the CRM database.</p>
+    </div>
+
+    <div id="alert-container" class="alert alert-danger" style="display: none;">
+        <span id="alert-message"></span>
+    </div>
+
+    <div class="glass-card">
+        <form id="create-appointment-form" novalidate>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="patientId" class="form-label">Patient</label>
+                    <select id="patientId" class="form-input" style="height: 48px;" required>
+                        <option value="" disabled selected>Select Patient</option>
+                    </select>
+                    <div id="patientId-error" class="input-error-msg">Patient selection is required.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="doctorId" class="form-label">Doctor</label>
+                    <select id="doctorId" class="form-input" style="height: 48px;" required>
+                        <option value="" disabled selected>Select Doctor</option>
+                    </select>
+                    <div id="doctorId-error" class="input-error-msg">Doctor selection is required.</div>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="appointmentDate" class="form-label">Appointment Date</label>
+                    <input type="date" id="appointmentDate" class="form-input" required />
+                    <div id="appointmentDate-error" class="input-error-msg">Appointment date is required.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="appointmentTime" class="form-label">Appointment Time</label>
+                    <select id="appointmentTime" class="form-input" style="height: 48px;" required>
+                        <option value="" disabled selected>Select Time Slot</option>
+                        <option value="09:00 AM">09:00 AM</option>
+                        <option value="09:30 AM">09:30 AM</option>
+                        <option value="10:00 AM">10:00 AM</option>
+                        <option value="10:30 AM">10:30 AM</option>
+                        <option value="11:00 AM">11:00 AM</option>
+                        <option value="11:30 AM">11:30 AM</option>
+                        <option value="12:00 PM">12:00 PM</option>
+                        <option value="12:30 PM">12:30 PM</option>
+                        <option value="01:00 PM">01:00 PM</option>
+                        <option value="01:30 PM">01:30 PM</option>
+                        <option value="02:00 PM">02:00 PM</option>
+                        <option value="02:30 PM">02:30 PM</option>
+                        <option value="03:00 PM">03:00 PM</option>
+                        <option value="03:30 PM">03:30 PM</option>
+                        <option value="04:00 PM">04:00 PM</option>
+                        <option value="04:30 PM">04:30 PM</option>
+                        <option value="05:00 PM">05:00 PM</option>
+                    </select>
+                    <div id="appointmentTime-error" class="input-error-msg">Time slot is required.</div>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="status" class="form-label">Status</label>
+                    <select id="status" class="form-input" style="height: 48px;" required>
+                        <option value="Scheduled" selected>Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <div id="status-error" class="input-error-msg">Status is required.</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="reason" class="form-label">Reason for Appointment</label>
+                <textarea id="reason" class="form-input" style="height: 120px; resize: vertical;" placeholder="e.g. Annual physical exam, review of cardiovascular diagnostic lab tests..." required></textarea>
+                <div id="reason-error" class="input-error-msg">Reason for appointment is required (max 500 characters).</div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: var(--spacing-sm);">
+                Save Appointment
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const token = localStorage.getItem('token');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set min date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').min = today;
+
+            loadDropdownData();
+        });
+
+        async function loadDropdownData() {
+            const patientSelect = document.getElementById('patientId');
+            const doctorSelect = document.getElementById('doctorId');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+
+            try {
+                // Load Patients
+                const patientsResponse = await fetch('/api/patients', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const patientsResult = await patientsResponse.json();
+                
+                if (patientsResponse.ok && patientsResult.success) {
+                    patientsResult.data.forEach(p => {
+                        patientSelect.innerHTML += `<option value="${p.id}">${p.fullName} (ID: #${p.id})</option>`;
+                    });
+                } else {
+                    throw new Error('Failed to load patients.');
+                }
+
+                // Load Doctors
+                const doctorsResponse = await fetch('/api/appointments/doctors', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const doctorsResult = await doctorsResponse.json();
+
+                if (doctorsResponse.ok && doctorsResult.success) {
+                    doctorsResult.data.forEach(d => {
+                        doctorSelect.innerHTML += `<option value="${d.id}">${d.fullName}</option>`;
+                    });
+                } else {
+                    throw new Error('Failed to load doctors.');
+                }
+
+            } catch (error) {
+                alertContainer.style.display = 'flex';
+                alertMessage.innerText = error.message;
+            }
+        }
+
+        document.getElementById('create-appointment-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const patientInput = document.getElementById('patientId');
+            const doctorInput = document.getElementById('doctorId');
+            const dateInput = document.getElementById('appointmentDate');
+            const timeInput = document.getElementById('appointmentTime');
+            const statusInput = document.getElementById('status');
+            const reasonInput = document.getElementById('reason');
+
+            const patientError = document.getElementById('patientId-error');
+            const doctorError = document.getElementById('doctorId-error');
+            const dateError = document.getElementById('appointmentDate-error');
+            const timeError = document.getElementById('appointmentTime-error');
+            const statusError = document.getElementById('status-error');
+            const reasonError = document.getElementById('reason-error');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+
+            // Reset validation states
+            alertContainer.style.display = 'none';
+            [patientInput, doctorInput, dateInput, timeInput, statusInput, reasonInput].forEach(el => el.classList.remove('invalid'));
+            [patientError, doctorError, dateError, timeError, statusError, reasonError].forEach(el => el.style.display = 'none');
+
+            let isValid = true;
+
+            if (!patientInput.value) {
+                patientInput.classList.add('invalid');
+                patientError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!doctorInput.value) {
+                doctorInput.classList.add('invalid');
+                doctorError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!dateInput.value) {
+                dateInput.classList.add('invalid');
+                dateError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!timeInput.value) {
+                timeInput.classList.add('invalid');
+                timeError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!statusInput.value) {
+                statusInput.classList.add('invalid');
+                statusError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!reasonInput.value.trim() || reasonInput.value.trim().length > 500) {
+                reasonInput.classList.add('invalid');
+                reasonError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Scheduling...';
+
+            try {
+                const response = await fetch('/api/appointments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        patientId: parseInt(patientInput.value),
+                        doctorId: parseInt(doctorInput.value),
+                        appointmentDate: dateInput.value,
+                        appointmentTime: timeInput.value,
+                        status: statusInput.value,
+                        reason: reasonInput.value.trim()
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to schedule appointment.');
+                }
+
+                alertContainer.className = "alert alert-success";
+                alertMessage.innerText = "Appointment scheduled successfully! Redirecting...";
+                alertContainer.style.display = 'flex';
+
+                setTimeout(() => {
+                    window.location.href = '/AppointmentView';
+                }, 1000);
+
+            } catch (error) {
+                alertContainer.className = "alert alert-danger";
+                alertMessage.innerText = error.message;
+                alertContainer.style.display = 'flex';
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+            }
+        });
+    </script>
+}

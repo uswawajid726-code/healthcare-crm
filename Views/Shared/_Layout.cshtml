@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Healthcare CRM</title>
+    
+    <!-- Site Stylesheet -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav class="navbar">
+                <a class="navbar-brand" href="/">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2.5" style="filter: drop-shadow(0 0 5px rgba(14,237,198,0.4));">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                    Health<span>CRM</span>
+                </a>
+                
+                <ul class="navbar-nav" id="nav-links">
+                    <!-- Dynamic nav links loaded via client script -->
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/Home/Index">Dashboard</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/PatientView">Patients</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/AppointmentView">Appointments</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/swagger">Swagger</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="btn-secondary" href="/Account/Logout" style="text-decoration: none;">Sign Out</a>
+                    </li>
+                    <li class="nav-item guest-only">
+                        <a class="nav-link" href="/Account/Login">Sign In</a>
+                    </li>
+                    <li class="nav-item guest-only">
+                        <a class="btn-primary" href="/Account/Register" style="text-decoration: none;">Register</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container" style="flex: 1; display: flex; flex-direction: column;">
+        <main role="main" style="flex: 1; display: flex; flex-direction: column;">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 - HealthCRM. Designed for the Friendsware Solutions Summer Internship Program.</p>
+        </div>
+    </footer>
+
+    <!-- Client-side Auth Navigation Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const authLinks = document.querySelectorAll('.auth-only');
+            const guestLinks = document.querySelectorAll('.guest-only');
+
+            if (token) {
+                authLinks.forEach(el => el.style.display = 'block');
+                guestLinks.forEach(el => el.style.display = 'none');
+            } else {
+                authLinks.forEach(el => el.style.display = 'none');
+                guestLinks.forEach(el => el.style.display = 'block');
+            }
+        });
+    </script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

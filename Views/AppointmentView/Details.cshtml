@@ -1,0 +1,262 @@
+@{
+    ViewData["Title"] = "Appointment Details";
+    Layout = "_Layout";
+    var apptId = ViewBag.AppointmentId;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/patient.css" asp-append-version="true" />
+    <style>
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-md);
+        }
+        
+        .details-section-card {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-glass);
+            padding: var(--spacing-sm) 0;
+            font-size: 0.95rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-scheduled {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #C7D2FE;
+        }
+        .status-completed {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #A7F3D0;
+        }
+        .status-cancelled {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #FCA5A5;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.05);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--color-primary);
+            animation: spin 1s linear infinite;
+            margin: var(--spacing-lg) auto;
+        }
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @@media (max-width: 768px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+}
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container patient-container animate-fade-in">
+    <div style="margin-bottom: var(--spacing-xl);">
+        <a href="/AppointmentView" style="color: var(--color-primary); text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm); font-size: 0.95rem; font-weight: 500;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Directory
+        </a>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--spacing-sm); flex-wrap: wrap; gap: var(--spacing-md);">
+            <div>
+                <h1 style="font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-main) 30%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Appointment Details
+                </h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem;" id="appt-id-subtitle">Record Reference ID: #APT-@apptId</p>
+            </div>
+            <div>
+                <a id="btn-edit-appointment" href="#" class="btn-secondary" style="text-decoration: none; display: none;">
+                    Edit Appointment
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-container" class="alert alert-danger" style="display: none;">
+        <span id="alert-message"></span>
+    </div>
+
+    <div class="details-grid" id="details-view-container">
+        <div style="grid-column: 1 / -1; text-align: center;">
+            <div class="spinner"></div>
+            Loading details...
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const apptId = '@apptId';
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userRole = user.role;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up Edit button link and visibility
+            if (userRole === 'Admin' || userRole === 'Receptionist') {
+                const editBtn = document.getElementById('btn-edit-appointment');
+                editBtn.href = `/AppointmentView/Edit/${apptId}`;
+                editBtn.style.display = 'inline-flex';
+            }
+
+            loadAppointmentDetails();
+        });
+
+        async function loadAppointmentDetails() {
+            const container = document.getElementById('details-view-container');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+
+            try {
+                const response = await fetch(`/api/appointments/${apptId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to load appointment details.');
+                }
+
+                const appt = result.data;
+                const formattedDate = new Date(appt.appointmentDate).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+
+                let statusClass = 'status-scheduled';
+                if (appt.status.toLowerCase() === 'completed') statusClass = 'status-completed';
+                if (appt.status.toLowerCase() === 'cancelled') statusClass = 'status-cancelled';
+
+                container.innerHTML = `
+                    <!-- Left: Patient & Doctor Cards -->
+                    <div class="details-section-card">
+                        <!-- Patient Info Card -->
+                        <div class="glass-card" style="padding: var(--spacing-lg);">
+                            <h3 style="color: var(--color-primary); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Patient Details</h3>
+                            <div class="info-row">
+                                <span class="info-label">Full Name</span>
+                                <span class="info-value">${appt.patient ? appt.patient.fullName : 'N/A'}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Patient ID</span>
+                                <span class="info-value">#${appt.patientId}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Phone</span>
+                                <span class="info-value">${appt.patient ? appt.patient.phone : 'N/A'}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Email</span>
+                                <span class="info-value">${appt.patient ? appt.patient.email : 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <!-- Doctor Info Card -->
+                        <div class="glass-card" style="padding: var(--spacing-lg);">
+                            <h3 style="color: var(--color-accent); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Assigned Doctor</h3>
+                            <div class="info-row">
+                                <span class="info-label">Doctor Name</span>
+                                <span class="info-value">${appt.doctor ? appt.doctor.fullName : 'N/A'}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Specialist ID</span>
+                                <span class="info-value">#${appt.doctorId}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Email Contact</span>
+                                <span class="info-value">${appt.doctor ? appt.doctor.email : 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Schedule & Consultation Info -->
+                    <div class="details-section-card">
+                        <div class="glass-card" style="padding: var(--spacing-lg); height: 100%;">
+                            <h3 style="color: var(--text-main); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Schedule Details</h3>
+                            <div class="info-row">
+                                <span class="info-label">Date</span>
+                                <span class="info-value">${formattedDate}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Time Slot</span>
+                                <span class="info-value">${appt.appointmentTime}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Status</span>
+                                <span class="info-value">
+                                    <span class="status-badge ${statusClass}">${appt.status}</span>
+                                </span>
+                            </div>
+                            
+                            <div style="margin-top: var(--spacing-lg);">
+                                <h4 class="form-label" style="font-weight: 600; margin-bottom: 6px;">Reason for Appointment</h4>
+                                <div style="background: rgba(7, 11, 19, 0.4); border: 1px solid var(--border-glass); border-radius: var(--border-radius-sm); padding: var(--spacing-md); line-height: 1.5; color: var(--text-main); font-size: 0.95rem; min-height: 120px;">
+                                    ${appt.reason}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                alertContainer.style.display = 'flex';
+                alertMessage.innerText = error.message;
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; color: var(--color-error); padding: var(--spacing-lg) 0;">
+                        Failed to retrieve appointment details.
+                    </div>
+                `;
+            }
+        }
+    </script>
+}
