@@ -21,6 +21,7 @@ namespace week1.Tests
             _connection = new SqliteConnection("Filename=:memory:");
             _connection.Open();
 
+
             _contextOptions = new DbContextOptionsBuilder<AppDbContext>()
                 .UseSqlite(_connection)
                 .Options;
