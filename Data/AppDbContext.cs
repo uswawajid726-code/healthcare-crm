@@ -15,6 +15,9 @@ namespace week1.Data
         public DbSet<Appointment> Appointments { get; set; } = null!;
         public DbSet<MedicalHistory> MedicalHistories { get; set; } = null!;
 
+        public DbSet<Invoice> Invoices { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
+        public DbSet<Hospital> Hospitals { get; set; } = null!;
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
