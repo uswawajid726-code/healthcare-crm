@@ -1,0 +1,251 @@
+@{
+    ViewData["Title"] = "Invoices";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/patient.css" asp-append-version="true" />
+    <style>
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-paid {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #A7F3D0;
+        }
+        .status-unpaid {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #C7D2FE;
+        }
+        .status-overdue {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #FCA5A5;
+        }
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.05);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--color-primary);
+            animation: spin 1s linear infinite;
+            margin: var(--spacing-lg) auto;
+        }
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--spacing-md);
+        }
+        @@media (max-width: 768px) {
+            .filter-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container patient-container animate-fade-in">
+    <div class="patient-top-bar">
+        <div>
+            <h1 style="font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-main) 30%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Billing Dashboard
+            </h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">Track invoices, statuses, and payments.</p>
+        </div>
+    </div>
+
+    <!-- Filters Panel -->
+    <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+        <div class="filter-grid">
+            <div class="search-container" style="max-width: none;">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="invoice-search" class="form-input search-input" placeholder="Search by patient name..." />
+            </div>
+            <div>
+                <select id="filter-status" class="form-input" style="height: 48px;">
+                    <option value="">All Statuses</option>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Overdue">Overdue</option>
+                </select>
+            </div>
+        </div>
+        <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+            <button class="btn-secondary" id="btn-clear-filters" style="font-size: 0.85rem; padding: 6px 14px;">Clear Filters</button>
+        </div>
+    </div>
+
+    <div id="alert-container" class="alert alert-danger" style="display: none;">
+        <span id="alert-message"></span>
+    </div>
+
+    <div class="patient-table-wrapper">
+        <table class="patient-table" id="invoices-table">
+            <thead>
+                <tr>
+                    <th>Invoice ID</th>
+                    <th>Patient Name</th>
+                    <th>Amount</th>
+                    <th>Issued On</th>
+                    <th>Status</th>
+                    <th style="width: 140px; text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="invoices-list-body">
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: var(--spacing-xl) 0;">
+                        <div class="spinner"></div>
+                        Loading invoices...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const token = localStorage.getItem('token');
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadInvoices();
+
+            let filterTimeout;
+            const searchInput = document.getElementById('invoice-search');
+            const statusSelect = document.getElementById('filter-status');
+
+            const onFilterChanged = () => {
+                clearTimeout(filterTimeout);
+                filterTimeout = setTimeout(() => {
+                    loadInvoices(searchInput.value.trim(), statusSelect.value);
+                }, 300);
+            };
+
+            searchInput.addEventListener('input', onFilterChanged);
+            statusSelect.addEventListener('change', onFilterChanged);
+
+            document.getElementById('btn-clear-filters').addEventListener('click', function () {
+                searchInput.value = '';
+                statusSelect.value = '';
+                loadInvoices();
+            });
+        });
+
+        function statusClassFor(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'paid') return 'status-paid';
+            if (s === 'overdue') return 'status-overdue';
+            return 'status-unpaid';
+        }
+
+        async function loadInvoices(search = '', status = '') {
+            const tbody = document.getElementById('invoices-list-body');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+
+            try {
+                let url = '/api/invoices';
+                if (status) url += `?status=${encodeURIComponent(status)}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/Account/Login';
+                    return;
+                }
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to fetch invoices.');
+                }
+
+                let invoices = result.data || [];
+
+                if (search) {
+                    const s = search.toLowerCase();
+                    invoices = invoices.filter(inv =>
+                        inv.patient && inv.patient.fullName && inv.patient.fullName.toLowerCase().includes(s)
+                    );
+                }
+
+                tbody.innerHTML = '';
+
+                if (invoices.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+                                <div style="font-size: 3rem; margin-bottom: var(--spacing-sm); color: var(--border-glass);">🧾</div>
+                                <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-main);">No invoices found.</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Try modifying your search or filter selections.</div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                invoices.forEach(inv => {
+                    const issuedDate = new Date(inv.issuedAt || inv.createdAt).toLocaleDateString(undefined, {
+                        year: 'numeric', month: 'short', day: 'numeric'
+                    });
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="vertical-align: middle; font-weight: 600; color: var(--color-primary);">#INV-${inv.id}</td>
+                            <td style="vertical-align: middle;">
+                                <div style="font-weight: 600; color: var(--text-main);">${inv.patient ? inv.patient.fullName : 'Unknown'}</div>
+                            </td>
+                            <td style="vertical-align: middle; color: var(--text-main); font-weight: 500;">Rs. ${Number(inv.amount).toFixed(2)}</td>
+                            <td style="vertical-align: middle; color: var(--text-main);">${issuedDate}</td>
+                            <td style="vertical-align: middle;">
+                                <span class="status-badge ${statusClassFor(inv.status)}">${inv.status}</span>
+                            </td>
+                            <td style="vertical-align: middle; text-align: right;">
+                                <a href="/InvoiceView/Details/${inv.id}" class="btn-icon btn-icon-edit" title="View Details">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+            } catch (error) {
+                alertContainer.style.display = 'block';
+                alertMessage.innerText = error.message;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--color-error); padding: var(--spacing-xl) 0;">
+                            Failed to load invoices.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    </script>
+}

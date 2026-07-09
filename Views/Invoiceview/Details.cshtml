@@ -1,0 +1,311 @@
+@{
+    ViewData["Title"] = "Invoice Details";
+    Layout = "_Layout";
+    var invId = ViewBag.InvoiceId;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/patient.css" asp-append-version="true" />
+    <style>
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-md);
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-glass);
+            padding: var(--spacing-sm) 0;
+            font-size: 0.95rem;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: var(--text-muted); font-weight: 500; }
+        .info-value { color: var(--text-main); font-weight: 600; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-paid {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #A7F3D0;
+        }
+        .status-unpaid {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #C7D2FE;
+        }
+        .status-overdue {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #FCA5A5;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.05);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--color-primary);
+            animation: spin 1s linear infinite;
+            margin: var(--spacing-lg) auto;
+        }
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(7, 11, 19, 0.7);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content-glass {
+            max-width: 480px; width: 90%;
+            background: rgba(13, 21, 39, 0.85);
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+            border-radius: var(--border-radius-md);
+            padding: var(--spacing-lg);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            text-align: center;
+        }
+        .modal-overlay.active .modal-content-glass { transform: scale(1); }
+
+        @@media (max-width: 768px) {
+            .details-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container patient-container animate-fade-in">
+    <div style="margin-bottom: var(--spacing-xl);">
+        <a href="/InvoiceView" style="color: var(--color-primary); text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm); font-size: 0.95rem; font-weight: 500;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Billing Dashboard
+        </a>
+        <div style="margin-top: var(--spacing-sm);">
+            <h1 style="font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-main) 30%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Invoice Details
+            </h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">Record Reference ID: #INV-@invId</p>
+        </div>
+    </div>
+
+    <div id="alert-container" class="alert alert-danger" style="display: none;">
+        <span id="alert-message"></span>
+    </div>
+    <div id="success-container" class="alert alert-success" style="display: none;">
+        <span id="success-message"></span>
+    </div>
+
+    <div class="details-grid" id="details-view-container">
+        <div style="grid-column: 1 / -1; text-align: center;">
+            <div class="spinner"></div>
+            Loading invoice...
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal for Mark as Paid -->
+<div class="modal-overlay" id="pay-modal">
+    <div class="modal-content-glass">
+        <div style="color: var(--color-primary); margin-bottom: var(--spacing-md);">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"></path>
+            </svg>
+        </div>
+        <h3 style="color: var(--text-main); font-size: 1.3rem; font-weight: 600; margin-bottom: var(--spacing-sm);">Mark Invoice as Paid?</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: var(--spacing-lg);">
+            This will confirm payment for invoice <strong style="color: var(--text-main);">#INV-@invId</strong> and record the payment timestamp. This action cannot be undone.
+        </p>
+        <div style="display: flex; gap: var(--spacing-md); justify-content: center;">
+            <button class="btn-secondary" onclick="closePayModal()">Go Back</button>
+            <button class="btn-primary" id="btn-confirm-pay" onclick="confirmMarkAsPaid()">Confirm Payment</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const invId = '@invId';
+        const token = localStorage.getItem('token');
+        let currentInvoiceStatus = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadInvoiceDetails();
+        });
+
+        function statusClassFor(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'paid') return 'status-paid';
+            if (s === 'overdue') return 'status-overdue';
+            return 'status-unpaid';
+        }
+
+        async function loadInvoiceDetails() {
+            const container = document.getElementById('details-view-container');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+
+            try {
+                const response = await fetch(`/api/invoices/${invId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to load invoice details.');
+                }
+
+                const inv = result.data;
+                currentInvoiceStatus = inv.status;
+
+                const issuedDate = new Date(inv.issuedAt || inv.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+                const paidDate = inv.paidAt
+                    ? new Date(inv.paidAt).toLocaleString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '—';
+
+                const isPaid = (inv.status || '').toLowerCase() === 'paid';
+
+                container.innerHTML = `
+                    <div class="glass-card" style="padding: var(--spacing-lg);">
+                        <h3 style="color: var(--color-primary); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Patient Information</h3>
+                        <div class="info-row">
+                            <span class="info-label">Full Name</span>
+                            <span class="info-value">${inv.patient ? inv.patient.fullName : 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Patient ID</span>
+                            <span class="info-value">#${inv.patientId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Phone</span>
+                            <span class="info-value">${inv.patient ? inv.patient.phone : 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Email</span>
+                            <span class="info-value">${inv.patient ? inv.patient.email : 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Linked Appointment</span>
+                            <span class="info-value">#APT-${inv.appointmentId}</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" style="padding: var(--spacing-lg);">
+                        <h3 style="color: var(--text-main); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Billing Summary</h3>
+                        <div class="info-row">
+                            <span class="info-label">Amount</span>
+                            <span class="info-value">Rs. ${Number(inv.amount).toFixed(2)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Issued On</span>
+                            <span class="info-value">${issuedDate}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Status</span>
+                            <span class="info-value"><span class="status-badge ${statusClassFor(inv.status)}">${inv.status}</span></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Paid On</span>
+                            <span class="info-value">${paidDate}</span>
+                        </div>
+
+                        <div style="margin-top: var(--spacing-lg); text-align: right;">
+                            <button
+                                id="btn-mark-paid"
+                                class="btn-primary"
+                                ${isPaid ? 'disabled' : ''}
+                                style="${isPaid ? 'opacity: 0.5; cursor: not-allowed;' : ''}"
+                                onclick="openPayModal()">
+                                ${isPaid ? 'Already Paid' : 'Mark as Paid'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                alertContainer.style.display = 'flex';
+                alertMessage.innerText = error.message;
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; color: var(--color-error); padding: var(--spacing-lg) 0;">
+                        Failed to retrieve invoice details.
+                    </div>
+                `;
+            }
+        }
+
+        function openPayModal() {
+            if (currentInvoiceStatus && currentInvoiceStatus.toLowerCase() === 'paid') return;
+            document.getElementById('pay-modal').classList.add('active');
+        }
+
+        function closePayModal() {
+            document.getElementById('pay-modal').classList.remove('active');
+        }
+
+        async function confirmMarkAsPaid() {
+            const confirmBtn = document.getElementById('btn-confirm-pay');
+            const alertContainer = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+            const successContainer = document.getElementById('success-container');
+            const successMessage = document.getElementById('success-message');
+
+            const originalText = confirmBtn.innerText;
+            confirmBtn.disabled = true;
+            confirmBtn.innerText = 'Processing...';
+
+            try {
+                const response = await fetch(`/api/invoices/${invId}/pay`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to mark invoice as paid.');
+                }
+
+                closePayModal();
+                successContainer.style.display = 'block';
+                successMessage.innerText = 'Payment confirmed successfully. Invoice marked as Paid.';
+                alertContainer.style.display = 'none';
+
+                await loadInvoiceDetails();
+
+            } catch (error) {
+                closePayModal();
+                alertContainer.style.display = 'flex';
+                alertMessage.innerText = error.message;
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = originalText;
+            }
+        }
+    </script>
+}
