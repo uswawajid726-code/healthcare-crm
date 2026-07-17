@@ -1,2 +1,2 @@
 ## Member C
-Successfully Implement backend APIs for Week 5
+Implemented Week 6 backend APIs for prescriptions, notifications, reminders, emergency contacts, and SOS alert flow.
