@@ -34,6 +34,20 @@
 					<li class="nav-item auth-only" style="display: none;">
 						<a class="nav-link" href="/InvoiceView">Billing</a>s
 					</li>
+					<li class="nav-item auth-only" style="display: none; position: relative;">
+						<button id="notif-bell-btn" style="position: relative; background: transparent; border: none; cursor: pointer; padding: 8px; color: var(--text-main);" onclick="toggleNotifPanel()">
+							<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+								<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+							</svg>
+							<span id="notif-badge" style="display:none; position:absolute; top:2px; right:2px; background:#EF4444; color:#fff; font-size:0.65rem; font-weight:700; border-radius:50%; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;">0</span>
+						</button>
+						<div id="notif-panel" style="display:none; position:absolute; right:0; top:110%; width:320px; max-height:400px; overflow-y:auto; background: rgba(13,21,39,0.95); border:1px solid var(--border-glass); border-radius: var(--border-radius-md); box-shadow: 0 16px 40px rgba(0,0,0,0.5); z-index: 1100;">
+							<div id="notif-list" style="padding: 8px;">
+								<div style="padding: var(--spacing-md); text-align:center; color: var(--text-muted); font-size:0.85rem;">Loading...</div>
+							</div>
+						</div>
+					</li>
                     <li class="nav-item auth-only" style="display: none;">
                         <a class="nav-link" href="/swagger">Swagger</a>
                     </li>
@@ -65,20 +79,84 @@
 
     <!-- Client-side Auth Navigation Script -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const token = localStorage.getItem('token');
-            const authLinks = document.querySelectorAll('.auth-only');
-            const guestLinks = document.querySelectorAll('.guest-only');
+		document.addEventListener('DOMContentLoaded', function() {
+		const token = localStorage.getItem('token');
+		const authLinks = document.querySelectorAll('.auth-only');
+		const guestLinks = document.querySelectorAll('.guest-only');
 
-            if (token) {
-                authLinks.forEach(el => el.style.display = 'block');
-                guestLinks.forEach(el => el.style.display = 'none');
-            } else {
-                authLinks.forEach(el => el.style.display = 'none');
-                guestLinks.forEach(el => el.style.display = 'block');
-            }
-        });
-    </script>
+		if (token) {
+		authLinks.forEach(el => el.style.display = 'block');
+		guestLinks.forEach(el => el.style.display = 'none');
+		} else {
+		authLinks.forEach(el => el.style.display = 'none');
+		guestLinks.forEach(el => el.style.display = 'block');
+		}
+		if (token) {
+		loadNotifications();
+		setInterval(loadNotifications, 30000);
+		}
+		});
+		function toggleNotifPanel() {
+		const panel = document.getElementById('notif-panel');
+		panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+		}
+
+		async function loadNotifications() {
+		const token = localStorage.getItem('token');
+		const user = JSON.parse(localStorage.getItem('user') || '{}');
+		if (!user.id) return;
+
+		try {
+		const response = await fetch(`/api/notifications?userId=${user.id}`, {
+		headers: { 'Authorization': `Bearer ${token}` }
+		});
+		const notifications = await response.json();
+
+		const badge = document.getElementById('notif-badge');
+		const list = document.getElementById('notif-list');
+
+		if (notifications.length > 0) {
+		badge.style.display = 'block';
+		badge.innerText = notifications.length;
+		} else {
+		badge.style.display = 'none';
+		}
+
+		if (!notifications.length) {
+		list.innerHTML = `<div style="padding: var(--spacing-md); text-align:center; color: var(--text-muted); font-size:0.85rem;">No new notifications.</div>`;
+		return;
+		}
+
+		list.innerHTML = notifications.map(n => `
+		<div onclick="handleNotificationClick(${n.id}, '${n.relatedUrl || ''}')" style="padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--border-glass); cursor: pointer;">
+			<div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${n.title}</div>
+			<div style="color: var(--text-muted); font-size: 0.8rem;">${n.message}</div>
+		</div>
+		`).join('');
+		} catch (error) {
+		console.error('Failed to load notifications:', error);
+		}
+		}
+
+		async function handleNotificationClick(id, relatedUrl) {
+		const token = localStorage.getItem('token');
+		try {
+		await fetch(`/api/notifications/${id}/read`, {
+		method: 'PATCH',
+		headers: { 'Authorization': `Bearer ${token}` }
+		});
+		} catch (error) {
+		console.error('Failed to mark notification as read:', error);
+		}
+
+		if (relatedUrl) {
+		window.location.href = relatedUrl;
+		} else {
+		document.getElementById('notif-panel').style.display = 'none';
+		loadNotifications();
+		}
+		}
+	</script>
     
     @await RenderSectionAsync("Scripts", required: false)
 </body>

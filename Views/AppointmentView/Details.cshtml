@@ -133,6 +133,31 @@
 </div>
 
 @section Scripts {
+<div class="glass-card" style="padding: var(--spacing-lg); margin-top: var(--spacing-lg);">
+        <h3 style="color: var(--color-primary); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Prescriptions</h3>
+
+        <form id="prescription-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: var(--spacing-md); align-items: end; margin-bottom: var(--spacing-lg);">
+            <div>
+                <label class="form-label">Medicine</label>
+                <input type="text" id="rx-medicine" class="form-input" placeholder="e.g. Amoxicillin" required />
+            </div>
+            <div>
+                <label class="form-label">Dosage</label>
+                <input type="text" id="rx-dosage" class="form-input" placeholder="e.g. 500mg twice daily" required />
+            </div>
+            <div>
+                <label class="form-label">Instructions</label>
+                <input type="text" id="rx-instructions" class="form-input" placeholder="e.g. After meals" />
+            </div>
+            <button type="submit" class="btn-primary">Add</button>
+        </form>
+
+        <div id="rx-alert" class="alert alert-danger" style="display: none;"></div>
+
+        <div id="prescriptions-list">
+            <div style="text-align: center; color: var(--text-muted); padding: var(--spacing-md) 0;">Loading prescriptions...</div>
+        </div>
+    </div>
     <script>
         const apptId = '@apptId';
         const token = localStorage.getItem('token');
@@ -148,6 +173,7 @@
             }
 
             loadAppointmentDetails();
+             loadPrescriptions();
         });
 
         async function loadAppointmentDetails() {
@@ -258,5 +284,57 @@
                 `;
             }
         }
+        async function loadPrescriptions() {
+            const listContainer = document.getElementById('prescriptions-list');
+            try {
+                const response = await fetch(`/api/prescriptions?appointmentId=${apptId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const prescriptions = await response.json();
+
+                if (!prescriptions.length) {
+                    listContainer.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: var(--spacing-md) 0;">No prescriptions added yet.</div>`;
+                    return;
+                }
+
+                listContainer.innerHTML = prescriptions.map(rx => `
+                    <div class="info-row">
+                        <span class="info-value">${rx.medicine} — ${rx.dosage}</span>
+                        <span class="info-label">${rx.instructions || ''}</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                listContainer.innerHTML = `<div style="color: var(--color-error); text-align:center;">Failed to load prescriptions.</div>`;
+            }
+        }
+
+        document.getElementById('prescription-form')?.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const rxAlert = document.getElementById('rx-alert');
+            rxAlert.style.display = 'none';
+
+            const payload = {
+                appointmentId: parseInt(apptId),
+                medicine: document.getElementById('rx-medicine').value.trim(),
+                dosage: document.getElementById('rx-dosage').value.trim(),
+                instructions: document.getElementById('rx-instructions').value.trim()
+            };
+
+            try {
+                const response = await fetch('/api/prescriptions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Failed to save prescription.');
+
+                document.getElementById('prescription-form').reset();
+                await loadPrescriptions();
+            } catch (error) {
+                rxAlert.style.display = 'block';
+                rxAlert.innerText = error.message;
+            }
+        });
     </script>
 }

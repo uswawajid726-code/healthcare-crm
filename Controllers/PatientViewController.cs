@@ -39,5 +39,12 @@ namespace week1.Controllers
             ViewBag.PatientId = id;
             return View();
         }
+        // GET: PatientView/EmergencyContacts/5
+        [HttpGet]
+        public IActionResult EmergencyContacts(int id)
+        {
+            ViewBag.PatientId = id;
+            return View();
+        }
     }
 }

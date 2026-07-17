@@ -1,0 +1,192 @@
+@{
+    ViewData["Title"] = "Emergency Contacts";
+    Layout = "_Layout";
+    var patientId = ViewBag.PatientId;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/patient.css" asp-append-version="true" />
+    <style>
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(7, 11, 19, 0.7);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content-glass {
+            max-width: 480px; width: 90%;
+            background: rgba(13, 21, 39, 0.85);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--border-radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+        }
+    </style>
+}
+
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container patient-container animate-fade-in">
+    <div style="margin-bottom: var(--spacing-lg);">
+        <a href="/PatientView/Profile/@patientId" style="color: var(--color-primary); text-decoration: none;">&larr; Back to Patient Profile</a>
+        <h1 style="font-size: 2rem; font-weight: 700; margin-top: var(--spacing-sm);">Emergency Contacts</h1>
+    </div>
+
+    <div id="alert-container" class="alert alert-danger" style="display: none;"></div>
+    <div id="success-container" class="alert alert-success" style="display: none;"></div>
+
+    <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+        <form id="contact-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: var(--spacing-md); align-items: end;">
+            <div>
+                <label class="form-label">Name</label>
+                <input type="text" id="contact-name" class="form-input" required />
+            </div>
+            <div>
+                <label class="form-label">Phone</label>
+                <input type="text" id="contact-phone" class="form-input" required />
+            </div>
+            <div>
+                <label class="form-label">Relationship</label>
+                <input type="text" id="contact-relationship" class="form-input" placeholder="e.g. Spouse" />
+            </div>
+            <button type="submit" class="btn-primary">Add Contact</button>
+        </form>
+    </div>
+
+    <div id="contacts-list"></div>
+</div>
+
+<!-- SOS Confirmation Modal -->
+<div class="modal-overlay" id="sos-modal">
+    <div class="modal-content-glass">
+        <h3 style="color: var(--text-main); margin-bottom: var(--spacing-sm);">Send SOS Alert?</h3>
+        <p id="sos-modal-text" style="color: var(--text-muted); margin-bottom: var(--spacing-lg);"></p>
+        <div style="display: flex; gap: var(--spacing-md); justify-content: center;">
+            <button class="btn-secondary" onclick="closeSosModal()">Cancel</button>
+            <button class="btn-primary" id="btn-confirm-sos">Send Alert</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const patientId = '@patientId';
+        const token = localStorage.getItem('token');
+        let pendingContactId = null;
+
+        document.addEventListener('DOMContentLoaded', loadContacts);
+
+        async function loadContacts() {
+            const container = document.getElementById('contacts-list');
+            try {
+                const response = await fetch(`/api/emergencycontacts?patientId=${patientId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const contacts = await response.json();
+
+                if (!contacts.length) {
+                    container.innerHTML = `<div class="glass-card" style="padding: var(--spacing-lg); text-align:center; color: var(--text-muted);">No emergency contacts added yet.</div>`;
+                    return;
+                }
+
+                container.innerHTML = contacts.map(c => `
+                    <div class="glass-card" style="padding: var(--spacing-md); margin-bottom: var(--spacing-md); display:flex; justify-content: space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:600; color: var(--text-main);">${c.name} <span style="color:var(--text-muted); font-weight:400;">(${c.relationship || 'N/A'})</span></div>
+                            <div style="color: var(--text-muted); font-size:0.9rem;">${c.phone}</div>
+                        </div>
+                        <div style="display:flex; gap: var(--spacing-sm);">
+                            <button class="btn-primary" onclick="openSosModal(${c.id}, '${c.name}')">SOS</button>
+                            <button class="btn-secondary" onclick="deleteContact(${c.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div style="color: var(--color-error); text-align:center;">Failed to load contacts.</div>`;
+            }
+        }
+
+        document.getElementById('contact-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const payload = {
+                patientId: parseInt(patientId),
+                name: document.getElementById('contact-name').value.trim(),
+                phone: document.getElementById('contact-phone').value.trim(),
+                relationship: document.getElementById('contact-relationship').value.trim()
+            };
+
+            try {
+                const response = await fetch('/api/emergencycontacts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Failed to add contact.');
+
+                document.getElementById('contact-form').reset();
+                await loadContacts();
+            } catch (error) {
+                const alertContainer = document.getElementById('alert-container');
+                alertContainer.style.display = 'block';
+                alertContainer.innerText = error.message;
+            }
+        });
+
+        async function deleteContact(id) {
+            try {
+                const response = await fetch(`/api/emergencycontacts/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to delete contact.');
+                await loadContacts();
+            } catch (error) {
+                const alertContainer = document.getElementById('alert-container');
+                alertContainer.style.display = 'block';
+                alertContainer.innerText = error.message;
+            }
+        }
+
+        function openSosModal(contactId, name) {
+            pendingContactId = contactId;
+            document.getElementById('sos-modal-text').innerText = `This will send an SOS alert to ${name}.`;
+            document.getElementById('sos-modal').classList.add('active');
+        }
+
+        function closeSosModal() {
+            document.getElementById('sos-modal').classList.remove('active');
+            pendingContactId = null;
+        }
+
+        document.getElementById('btn-confirm-sos').addEventListener('click', async function () {
+            const successContainer = document.getElementById('success-container');
+            const alertContainer = document.getElementById('alert-container');
+
+            try {
+                const response = await fetch(`/api/emergency/${pendingContactId}/notify`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.message || 'Failed to send SOS alert.');
+
+                closeSosModal();
+                successContainer.style.display = 'block';
+                successContainer.innerText = result.message;
+                alertContainer.style.display = 'none';
+            } catch (error) {
+                closeSosModal();
+                alertContainer.style.display = 'block';
+                alertContainer.innerText = error.message;
+                successContainer.style.display = 'none';
+            }
+        });
+    </script>
+}
