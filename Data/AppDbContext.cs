@@ -75,6 +75,12 @@ namespace week1.Data
                 .WithMany()
                 .HasForeignKey(m => m.PatientId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Invoice>()
+                 .HasOne(i => i.Appointment)
+                 .WithMany()
+                 .HasForeignKey(i => i.AppointmentId)
+                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

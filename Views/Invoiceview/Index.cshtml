@@ -62,16 +62,21 @@
 </script>
 
 <div class="container patient-container animate-fade-in">
-    <div class="patient-top-bar">
+    <div class="patient-top-bar" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <div>
             <h1 style="font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-main) 30%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
                 Billing Dashboard
             </h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">Track invoices, statuses, and payments.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">
+                Track invoices, statuses, and payments.
+            </p>
         </div>
-    </div>
-           <a href="/InvoiceView/Create" class="btn-primary" style="text-decoration: none;">+ Create Invoice</a>
-        </div>
+
+        <a href="/InvoiceView/Create"
+   class="btn-primary"
+   style="text-decoration:none; margin-left:auto; display:inline-flex; align-items:center;">
+    + Create Invoice
+</a>
     </div>
     <!-- Filters Panel -->
     <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
@@ -180,12 +185,11 @@
                     return;
                 }
 
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || 'Failed to fetch invoices.');
-                }
+                 let invoices = await response.json();
 
-                let invoices = result.data || [];
+if (!response.ok) {
+    throw new Error("Failed to fetch invoices.");
+}
 
                 if (search) {
                     const s = search.toLowerCase();
@@ -218,7 +222,7 @@
                         <tr>
                             <td style="vertical-align: middle; font-weight: 600; color: var(--color-primary);">#INV-${inv.id}</td>
                             <td style="vertical-align: middle;">
-                                <div style="font-weight: 600; color: var(--text-main);">${inv.patient ? inv.patient.fullName : 'Unknown'}</div>
+                                <div style="font-weight: 600; color: var(--text-main);">${inv.appointment?.patient?.fullName ?? 'Unknown'}</div>
                             </td>
                             <td style="vertical-align: middle; color: var(--text-main); font-weight: 500;">Rs. ${Number(inv.amount).toFixed(2)}</td>
                             <td style="vertical-align: middle; color: var(--text-main);">${issuedDate}</td>
@@ -250,4 +254,4 @@
             }
         }
     </script>
-}
+}F
