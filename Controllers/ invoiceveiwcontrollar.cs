@@ -22,5 +22,12 @@ namespace week1.Controllers
 			ViewBag.InvoiceId = id;
 			return View();
 		}
-	}
+        // GET: InvoiceView/Create
+        [Authorize(Roles = "Admin,Receptionist")]
+        [HttpGet]
+        public IActionResult Create()
+        {
+            return View();
+        }
+    }
 }
