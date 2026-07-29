@@ -176,14 +176,14 @@
                 });
 
                 const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || 'Failed to load invoice details.');
+                if (!response.ok) {
+                    throw new Error((result && result.message) ? result.message : 'Failed to load invoice details.');
                 }
 
-                const inv = result.data;
+                const inv = result.data || result;
                 currentInvoiceStatus = inv.status;
 
-                const issuedDate = new Date(inv.issuedAt || inv.createdAt).toLocaleDateString(undefined, {
+                const issuedDate = new Date(inv.issuedAt || inv.createdAt || Date.now()).toLocaleDateString(undefined, {
                     year: 'numeric', month: 'long', day: 'numeric'
                 });
                 const paidDate = inv.paidAt
@@ -191,25 +191,29 @@
                     : '—';
 
                 const isPaid = (inv.status || '').toLowerCase() === 'paid';
+                const patientObj = inv.appointment?.patient || inv.patient;
+                const patientName = patientObj ? patientObj.fullName : 'N/A';
+                const patientPhone = patientObj ? patientObj.phone : 'N/A';
+                const patientEmail = patientObj ? patientObj.email : 'N/A';
 
                 container.innerHTML = `
                     <div class="glass-card" style="padding: var(--spacing-lg);">
                         <h3 style="color: var(--color-primary); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Patient Information</h3>
                         <div class="info-row">
                             <span class="info-label">Full Name</span>
-                            <span class="info-value">${inv.patient ? inv.patient.fullName : 'N/A'}</span>
+                            <span class="info-value">${patientName}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Patient ID</span>
-                            <span class="info-value">#${inv.patientId}</span>
+                            <span class="info-value">#${inv.appointment?.patientId || inv.patientId || 'N/A'}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Phone</span>
-                            <span class="info-value">${inv.patient ? inv.patient.phone : 'N/A'}</span>
+                            <span class="info-value">${patientPhone}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Email</span>
-                            <span class="info-value">${inv.patient ? inv.patient.email : 'N/A'}</span>
+                            <span class="info-value">${patientEmail}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Linked Appointment</span>
@@ -221,7 +225,7 @@
                         <h3 style="color: var(--text-main); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: var(--spacing-md);">Billing Summary</h3>
                         <div class="info-row">
                             <span class="info-label">Amount</span>
-                            <span class="info-value">Rs. ${Number(inv.amount).toFixed(2)}</span>
+                            <span class="info-value">Rs. ${Number(inv.amount || 0).toFixed(2)}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Issued On</span>
@@ -287,7 +291,7 @@
                 });
 
                 const result = await response.json();
-                if (!response.ok || !result.success) {
+                if (!response.ok || (result.success === false)) {
                     throw new Error(result.message || 'Failed to mark invoice as paid.');
                 }
 

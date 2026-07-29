@@ -97,6 +97,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // Configure Swagger
 builder.Services.AddEndpointsApiExplorer();

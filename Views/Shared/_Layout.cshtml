@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 async function loadNotifications() {
 
     const token = localStorage.getItem('token');
@@ -114,6 +115,75 @@ async function loadNotifications() {
             </div>
 
 
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Healthcare CRM</title>
+    
+    <!-- Site Stylesheet -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav class="navbar">
+                <a class="navbar-brand" href="/">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2.5" style="filter: drop-shadow(0 0 5px rgba(14,237,198,0.4));">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                    Health<span>CRM</span>
+                </a>
+                
+                <ul class="navbar-nav" id="nav-links">
+                    <!-- Dynamic nav links loaded via client script -->
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/Home/Index">Dashboard</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/PatientView">Patients</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/AppointmentView">Appointments</a>
+                    </li>
+					<li class="nav-item auth-only" style="display: none;">
+						<a class="nav-link" href="/InvoiceView">Billing</a>
+					</li>
+					<li class="nav-item auth-only" style="display: none;">
+						<a class="nav-link" href="/Home/AnalyticsDashboard">Analytics</a>
+					</li>
+					<li class="nav-item auth-only" style="display: none; position: relative;">
+						<button id="notif-bell-btn" style="position: relative; background: transparent; border: none; cursor: pointer; padding: 8px; color: var(--text-main);" onclick="toggleNotifPanel()">
+							<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+								<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+							</svg>
+							<span id="notif-badge" style="display:none; position:absolute; top:2px; right:2px; background:#EF4444; color:#fff; font-size:0.65rem; font-weight:700; border-radius:50%; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;">0</span>
+						</button>
+						<div id="notif-panel" style="display:none; position:absolute; right:0; top:110%; width:320px; max-height:400px; overflow-y:auto; background: rgba(13,21,39,0.95); border:1px solid var(--border-glass); border-radius: var(--border-radius-md); box-shadow: 0 16px 40px rgba(0,0,0,0.5); z-index: 1100;">
+							<div id="notif-list" style="padding: 8px;">
+								<div style="padding: var(--spacing-md); text-align:center; color: var(--text-muted); font-size:0.85rem;">Loading...</div>
+							</div>
+						</div>
+					</li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="nav-link" href="/swagger">Swagger</a>
+                    </li>
+                    <li class="nav-item auth-only" style="display: none;">
+                        <a class="btn-secondary" href="/Account/Logout" style="text-decoration: none;">Sign Out</a>
+                    </li>
+                    <li class="nav-item guest-only">
+                        <a class="nav-link" href="/Account/Login">Sign In</a>
+                    </li>
+                    <li class="nav-item guest-only">
+                        <a class="btn-primary" href="/Account/Register" style="text-decoration: none;">Register</a>
+                    </li>
+                </ul>
+            </nav>
+>>>>>>> 95c392d (final fixes and project polish)
         </div>
 
         `).join('');

@@ -3,10 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace week1.Controllers
 {
+    /// <summary>
+    /// MVC controller for rendering Appointment management Razor Views.
+    /// Access strictly enforced via role-based authorization.
+    /// </summary>
     [Authorize]
     public class AppointmentViewController : Controller
     {
-        // GET: AppointmentView
+        /// <summary>
+        /// Renders the Appointment List and Management view.
+        /// </summary>
         [Authorize(Roles = "Admin,Doctor,Receptionist")]
         [HttpGet]
         public IActionResult Index()
@@ -14,7 +20,9 @@ namespace week1.Controllers
             return View();
         }
 
-        // GET: AppointmentView/Create
+        /// <summary>
+        /// Renders the form to schedule a new appointment.
+        /// </summary>
         [Authorize(Roles = "Admin,Receptionist")]
         [HttpGet]
         public IActionResult Create()
@@ -22,7 +30,10 @@ namespace week1.Controllers
             return View();
         }
 
-        // GET: AppointmentView/Edit/5
+        /// <summary>
+        /// Renders the form to modify an existing appointment.
+        /// </summary>
+        /// <param name="id">Appointment ID.</param>
         [Authorize(Roles = "Admin,Receptionist")]
         [HttpGet]
         public IActionResult Edit(int id)
@@ -31,7 +42,10 @@ namespace week1.Controllers
             return View();
         }
 
-        // GET: AppointmentView/Details/5
+        /// <summary>
+        /// Renders the detailed appointment profile view.
+        /// </summary>
+        /// <param name="id">Appointment ID.</param>
         [Authorize(Roles = "Admin,Doctor,Receptionist")]
         [HttpGet]
         public IActionResult Details(int id)

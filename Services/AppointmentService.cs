@@ -23,13 +23,11 @@ namespace week1.Services
                 .Include(a => a.Patient)
                 .Include(a => a.Doctor);
 
-            // Filter by Doctor if restricted
             if (doctorId.HasValue)
             {
                 query = query.Where(a => a.DoctorId == doctorId.Value);
             }
 
-            // Search by Patient or Doctor name
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var searchLower = search.ToLower().Trim();
@@ -38,13 +36,11 @@ namespace week1.Services
                     (a.Doctor != null && a.Doctor.FullName.ToLower().Contains(searchLower)));
             }
 
-            // Filter by status
             if (!string.IsNullOrWhiteSpace(status))
             {
                 query = query.Where(a => a.Status.ToLower() == status.ToLower().Trim());
             }
 
-            // Filter by date
             if (date.HasValue)
             {
                 var targetDate = date.Value.Date;
@@ -62,6 +58,26 @@ namespace week1.Services
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        public async Task<bool> IsDoctorAvailableAsync(int doctorId, DateTime date, string time, int? excludeAppointmentId = null)
+        {
+            var targetDate = date.Date;
+            var targetTime = (time ?? string.Empty).Trim().ToLower();
+
+            IQueryable<Appointment> query = _context.Appointments
+                .Where(a => a.DoctorId == doctorId &&
+                            a.AppointmentDate.Date == targetDate &&
+                            a.Status.ToLower() != "cancelled");
+
+            if (excludeAppointmentId.HasValue)
+            {
+                query = query.Where(a => a.Id != excludeAppointmentId.Value);
+            }
+
+            var existingAppointments = await query.ToListAsync();
+
+            return !existingAppointments.Any(a => (a.AppointmentTime ?? string.Empty).Trim().ToLower() == targetTime);
+        }
+
         public async Task<bool> AddAppointmentAsync(Appointment appointment)
         {
             if (appointment == null) return false;
@@ -71,6 +87,13 @@ namespace week1.Services
             var doctorExists = await _context.Users.AnyAsync(u => u.Id == appointment.DoctorId && u.Role == "Doctor");
 
             if (!patientExists || !doctorExists)
+            {
+                return false;
+            }
+
+            // Server-side double booking prevention check
+            var available = await IsDoctorAvailableAsync(appointment.DoctorId, appointment.AppointmentDate, appointment.AppointmentTime);
+            if (!available)
             {
                 return false;
             }
@@ -94,6 +117,13 @@ namespace week1.Services
             var doctorExists = await _context.Users.AnyAsync(u => u.Id == appointment.DoctorId && u.Role == "Doctor");
 
             if (!patientExists || !doctorExists)
+            {
+                return false;
+            }
+
+            // Server-side double booking prevention check (excluding current appointment)
+            var available = await IsDoctorAvailableAsync(appointment.DoctorId, appointment.AppointmentDate, appointment.AppointmentTime, appointment.Id);
+            if (!available)
             {
                 return false;
             }

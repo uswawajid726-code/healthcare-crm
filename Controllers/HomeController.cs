@@ -53,6 +53,12 @@ namespace week1.Controllers
             return View();
         }
 
+        [Authorize]
+        public IActionResult AnalyticsDashboard()
+        {
+            return View();
+        }
+
         public IActionResult Privacy()
         {
             return View();

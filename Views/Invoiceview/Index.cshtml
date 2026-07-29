@@ -73,11 +73,12 @@
         </div>
 
         <a href="/InvoiceView/Create"
-   class="btn-primary"
-   style="text-decoration:none; margin-left:auto; display:inline-flex; align-items:center;">
-    + Create Invoice
-</a>
+           class="btn-primary"
+           style="text-decoration:none; margin-left:auto; display:inline-flex; align-items:center;">
+            + Create Invoice
+        </a>
     </div>
+
     <!-- Filters Panel -->
     <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
         <div class="filter-grid">
@@ -185,17 +186,27 @@
                     return;
                 }
 
-                 let invoices = await response.json();
+                const result = await response.json();
 
-if (!response.ok) {
-    throw new Error("Failed to fetch invoices.");
-}
+                if (!response.ok) {
+                    throw new Error((result && result.message) ? result.message : "Failed to fetch invoices.");
+                }
+
+                // Defensive array handling: handles raw array, { data: [...] }, or { invoices: [...] }
+                let rawList = Array.isArray(result) ? result : (result.data || result.invoices || []);
+                let invoices = Array.isArray(rawList) ? rawList : [];
+
+                // Clear any previous error banner upon successful fetch
+                alertContainer.style.display = 'none';
 
                 if (search) {
                     const s = search.toLowerCase();
-                    invoices = invoices.filter(inv =>
-                        inv.patient && inv.patient.fullName && inv.patient.fullName.toLowerCase().includes(s)
-                    );
+                    invoices = invoices.filter(inv => {
+                        const pName = (inv.appointment && inv.appointment.patient && inv.patient?.fullName) 
+                                      ? inv.appointment.patient.fullName 
+                                      : (inv.patient?.fullName || '');
+                        return pName.toLowerCase().includes(s);
+                    });
                 }
 
                 tbody.innerHTML = '';
@@ -213,37 +224,49 @@ if (!response.ok) {
                     return;
                 }
 
-                invoices.forEach(inv => {
-                    const issuedDate = new Date(inv.issuedAt || inv.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric', month: 'short', day: 'numeric'
-                    });
+                // Defensive loop check
+                if (Array.isArray(invoices)) {
+                    invoices.forEach(inv => {
+                        const issuedDate = new Date(inv.issuedAt || inv.createdAt || Date.now()).toLocaleDateString(undefined, {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        });
 
-                    tbody.innerHTML += `
-                        <tr>
-                            <td style="vertical-align: middle; font-weight: 600; color: var(--color-primary);">#INV-${inv.id}</td>
-                            <td style="vertical-align: middle;">
-                                <div style="font-weight: 600; color: var(--text-main);">${inv.appointment?.patient?.fullName ?? 'Unknown'}</div>
-                            </td>
-                            <td style="vertical-align: middle; color: var(--text-main); font-weight: 500;">Rs. ${Number(inv.amount).toFixed(2)}</td>
-                            <td style="vertical-align: middle; color: var(--text-main);">${issuedDate}</td>
-                            <td style="vertical-align: middle;">
-                                <span class="status-badge ${statusClassFor(inv.status)}">${inv.status}</span>
-                            </td>
-                            <td style="vertical-align: middle; text-align: right;">
-                                <a href="/InvoiceView/Details/${inv.id}" class="btn-icon btn-icon-edit" title="View Details">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                </a>
-                            </td>
-                        </tr>
-                    `;
-                });
+                        const patientName = inv.appointment?.patient?.fullName || inv.patient?.fullName || 'N/A';
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="vertical-align: middle; font-weight: 600; color: var(--color-primary);">#INV-${inv.id}</td>
+                                <td style="vertical-align: middle;">
+                                    <div style="font-weight: 600; color: var(--text-main);">${patientName}</div>
+                                </td>
+                                <td style="vertical-align: middle; color: var(--text-main); font-weight: 500;">Rs. ${Number(inv.amount || 0).toFixed(2)}</td>
+                                <td style="vertical-align: middle; color: var(--text-main);">${issuedDate}</td>
+                                <td style="vertical-align: middle;">
+                                    <span class="status-badge ${statusClassFor(inv.status)}">${inv.status || 'Unpaid'}</span>
+                                </td>
+                                <td style="vertical-align: middle; text-align: right;">
+                                    <a href="/InvoiceView/Details/${inv.id}" class="btn-icon btn-icon-edit" title="View Details">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </a>
+                                    <button onclick="deleteInvoice(${inv.id})" class="btn-icon btn-icon-delete" title="Delete Invoice" style="background:none; border:none; cursor:pointer;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
 
             } catch (error) {
+                console.error("Invoice processing error:", error);
                 alertContainer.style.display = 'block';
-                alertMessage.innerText = error.message;
+                alertMessage.innerText = error.message || 'An error occurred while loading invoices.';
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" style="text-align: center; color: var(--color-error); padding: var(--spacing-xl) 0;">
@@ -253,5 +276,25 @@ if (!response.ok) {
                 `;
             }
         }
+
+        async function deleteInvoice(id) {
+            if (!confirm(`Are you sure you want to delete invoice #INV-${id}?`)) return;
+
+            try {
+                const response = await fetch(`/api/invoices/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to delete invoice.');
+                }
+
+                loadInvoices();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
     </script>
-}F
+}

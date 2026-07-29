@@ -97,7 +97,6 @@ namespace week1.Controllers
                     });
                 }
 
-                // If Doctor, verify they are assigned to this appointment
                 if (userRole == "Doctor" && appointment.DoctorId != userId)
                 {
                     return StatusCode(403, new ApiResponse
@@ -140,6 +139,21 @@ namespace week1.Controllers
 
             try
             {
+                // Double booking validation
+                var isAvailable = await _appointmentService.IsDoctorAvailableAsync(
+                    appointment.DoctorId, 
+                    appointment.AppointmentDate, 
+                    appointment.AppointmentTime);
+
+                if (!isAvailable)
+                {
+                    return StatusCode(409, new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This doctor already has an appointment at the selected date and time."
+                    });
+                }
+
                 var success = await _appointmentService.AddAppointmentAsync(appointment);
                 if (!success)
                 {
@@ -192,6 +206,22 @@ namespace week1.Controllers
 
             try
             {
+                // Double booking validation (excluding current appointment being updated)
+                var isAvailable = await _appointmentService.IsDoctorAvailableAsync(
+                    appointment.DoctorId, 
+                    appointment.AppointmentDate, 
+                    appointment.AppointmentTime, 
+                    appointment.Id);
+
+                if (!isAvailable)
+                {
+                    return StatusCode(409, new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This doctor already has an appointment at the selected date and time."
+                    });
+                }
+
                 var success = await _appointmentService.UpdateAppointmentAsync(appointment);
                 if (!success)
                 {

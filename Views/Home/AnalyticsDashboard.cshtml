@@ -1,0 +1,453 @@
+@{
+    ViewData["Title"] = "Analytics Dashboard";
+    Layout = "_Layout";
+}
+
+<!-- Include Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Client-side Auth Check -->
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/Account/Login';
+    }
+</script>
+
+<div class="container animate-fade-in" style="padding: var(--spacing-xl) 0;">
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-xl);">
+        
+        <!-- Header Banner -->
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(13, 21, 39, 0.8) 0%, rgba(14, 237, 198, 0.08) 50%, rgba(139, 92, 246, 0.12) 100%); border-color: rgba(14, 237, 198, 0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-md);">
+                <div>
+                    <h1 style="font-size: 2.2rem; font-weight: 700; margin-bottom: var(--spacing-xs); background: linear-gradient(135deg, var(--text-main) 40%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        Executive Analytics Dashboard
+                    </h1>
+                    <p style="color: var(--text-muted); font-size: 1.05rem;">Real-time performance metrics, demographic distribution, and appointment volume trends.</p>
+                </div>
+                <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                    <button onclick="loadAnalyticsData()" class="btn-secondary" style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <svg id="refresh-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M1 20v-6h6"></path>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        Refresh Live Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Error / Alert Banner -->
+        <div id="analytics-error-banner" style="display: none; padding: var(--spacing-md) var(--spacing-lg); background: rgba(239, 68, 68, 0.15); border: 1px solid var(--color-error); border-radius: var(--border-radius-md); color: #FCA5A5; font-weight: 500;">
+            <span id="analytics-error-text">An error occurred while connecting to the live analytics services.</span>
+        </div>
+
+        <!-- Summary Stat Cards Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--spacing-lg);">
+            
+            <!-- Card 1: Total Patients -->
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 4px solid var(--color-primary); position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; font-weight: 600;">Total Patients</p>
+                        <h3 id="stat-total-patients" style="font-size: 2.2rem; margin: var(--spacing-xs) 0; color: var(--color-primary); font-weight: 700;">
+                            <span class="loading-pulse" style="display: inline-block; width: 60px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 4px;"></span>
+                        </h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Registered in CRM database</p>
+                    </div>
+                    <div style="background: rgba(14, 237, 198, 0.12); border-radius: 12px; padding: 10px; color: var(--color-primary);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: New Patients This Month -->
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 4px solid var(--color-accent); position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; font-weight: 600;">New This Month</p>
+                        <h3 id="stat-new-patients" style="font-size: 2.2rem; margin: var(--spacing-xs) 0; color: var(--color-accent); font-weight: 700;">
+                            <span class="loading-pulse" style="display: inline-block; width: 60px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 4px;"></span>
+                        </h3>
+                        <p style="font-size: 0.8rem; color: var(--color-success); font-weight: 500;">Joined in current calendar month</p>
+                    </div>
+                    <div style="background: rgba(139, 92, 246, 0.12); border-radius: 12px; padding: 10px; color: var(--color-accent);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="17" y1="11" x2="23" y2="11"></line>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Total Doctors -->
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 4px solid #3B82F6; position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; font-weight: 600;">Total Doctors</p>
+                        <h3 id="stat-total-doctors" style="font-size: 2.2rem; margin: var(--spacing-xs) 0; color: #60A5FA; font-weight: 700;">
+                            <span class="loading-pulse" style="display: inline-block; width: 60px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 4px;"></span>
+                        </h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Active medical practitioners</p>
+                    </div>
+                    <div style="background: rgba(59, 130, 246, 0.12); border-radius: 12px; padding: 10px; color: #60A5FA;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Today's Appointments -->
+            <div class="glass-card" style="padding: var(--spacing-lg); border-left: 4px solid #F59E0B; position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; font-weight: 600;">Today's Appointments</p>
+                        <h3 id="stat-today-appointments" style="font-size: 2.2rem; margin: var(--spacing-xs) 0; color: #FBBF24; font-weight: 700;">
+                            <span class="loading-pulse" style="display: inline-block; width: 60px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 4px;"></span>
+                        </h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Scheduled for today</p>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.12); border-radius: 12px; padding: 10px; color: #FBBF24;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Main Charts Section -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+            
+            <!-- Chart 1: Patient Gender Distribution (Pie Chart) -->
+            <div class="glass-card" style="display: flex; flex-direction: column; gap: var(--spacing-md); position: relative; min-height: 380px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Patient Gender Distribution</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Demographics breakdown across patient base</p>
+                    </div>
+                    <span style="font-size: 0.75rem; padding: 4px 10px; background: rgba(14, 237, 198, 0.1); border: 1px solid var(--color-primary); border-radius: 20px; color: var(--color-primary); font-weight: 600;">Pie Chart</span>
+                </div>
+                <div style="flex: 1; position: relative; display: flex; justify-content: center; align-items: center;">
+                    <div id="gender-loading" style="position: absolute; color: var(--text-muted); font-size: 0.9rem;">Loading chart data...</div>
+                    <div id="gender-empty" style="display: none; position: absolute; color: var(--text-muted); text-align: center; font-size: 0.9rem;">No patient gender records available.</div>
+                    <canvas id="genderPieChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3: Appointments Per Doctor (Bar Chart) -->
+            <div class="glass-card" style="display: flex; flex-direction: column; gap: var(--spacing-md); position: relative; min-height: 380px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Appointments Per Doctor</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Doctor workload distribution for current month</p>
+                    </div>
+                    <span style="font-size: 0.75rem; padding: 4px 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid var(--color-accent); border-radius: 20px; color: var(--color-accent); font-weight: 600;">Bar Chart</span>
+                </div>
+                <div style="flex: 1; position: relative; display: flex; justify-content: center; align-items: center;">
+                    <div id="doctor-loading" style="position: absolute; color: var(--text-muted); font-size: 0.9rem;">Loading chart data...</div>
+                    <div id="doctor-empty" style="display: none; position: absolute; color: var(--text-muted); text-align: center; font-size: 0.9rem;">No doctor appointment records found for this month.</div>
+                    <canvas id="doctorBarChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Full-Width Chart 2: Appointments During Last 30 Days (Line Chart) -->
+        <div class="glass-card" style="display: flex; flex-direction: column; gap: var(--spacing-md); position: relative; min-height: 400px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-sm);">
+                <div>
+                    <h3 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main);">Appointments Volume (Last 30 Days)</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Daily consultation trend analysis over the past 30 consecutive calendar days</p>
+                </div>
+                <span style="font-size: 0.75rem; padding: 4px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid #3B82F6; border-radius: 20px; color: #60A5FA; font-weight: 600;">Line Chart</span>
+            </div>
+            <div style="flex: 1; position: relative; display: flex; justify-content: center; align-items: center; width: 100%;">
+                <div id="line-loading" style="position: absolute; color: var(--text-muted); font-size: 0.9rem;">Loading 30-day timeline...</div>
+                <div id="line-empty" style="display: none; position: absolute; color: var(--text-muted); text-align: center; font-size: 0.9rem;">No appointments booked in the last 30 days.</div>
+                <canvas id="appointmentsLineChart" style="max-height: 300px; width: 100%;"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let genderChartInstance = null;
+        let appointmentChartInstance = null;
+        let doctorChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadAnalyticsData();
+        });
+
+        async function loadAnalyticsData() {
+            const token = localStorage.getItem('token');
+            const errorBanner = document.getElementById('analytics-error-banner');
+            const errorText = document.getElementById('analytics-error-text');
+            const spinner = document.getElementById('refresh-spinner');
+            
+            errorBanner.style.display = 'none';
+            if (spinner) spinner.classList.add('spin-animation');
+
+            try {
+                const headers = { 'Authorization': `Bearer ${token}` };
+
+                // Execute concurrent API calls
+                const [patientRes, appointmentRes, doctorRes] = await Promise.all([
+                    fetch('/api/analytics/patients', { headers }),
+                    fetch('/api/analytics/appointments', { headers }),
+                    fetch('/api/analytics/doctors', { headers })
+                ]);
+
+                if (!patientRes.ok || !appointmentRes.ok || !doctorRes.ok) {
+                    if (patientRes.status === 401 || appointmentRes.status === 401 || doctorRes.status === 401) {
+                        window.location.href = '/Account/Login';
+                        return;
+                    }
+                    throw new Error('One or more analytics API endpoints returned an error response.');
+                }
+
+                const patientData = await patientRes.json();
+                const appointmentData = await appointmentRes.json();
+                const doctorData = await doctorRes.json();
+
+                if (patientData.success && patientData.data) {
+                    renderPatientAnalytics(patientData.data);
+                }
+                if (appointmentData.success && appointmentData.data) {
+                    renderAppointmentAnalytics(appointmentData.data);
+                }
+                if (doctorData.success && doctorData.data) {
+                    renderDoctorAnalytics(doctorData.data);
+                }
+
+            } catch (err) {
+                console.error("Failed to load live analytics data:", err);
+                errorText.innerText = `Failed to load analytics: ${err.message || 'Server connection error.'}`;
+                errorBanner.style.display = 'block';
+            } finally {
+                if (spinner) spinner.classList.remove('spin-animation');
+            }
+        }
+
+        function renderPatientAnalytics(data) {
+            document.getElementById('stat-total-patients').innerText = data.totalPatients ?? 0;
+            document.getElementById('stat-new-patients').innerText = data.newPatientsThisMonth ?? 0;
+
+            document.getElementById('gender-loading').style.display = 'none';
+            
+            const genderDict = data.genderDistribution || {};
+            const labels = Object.keys(genderDict);
+            const values = Object.values(genderDict);
+
+            if (labels.length === 0 || values.every(v => v === 0)) {
+                document.getElementById('gender-empty').style.display = 'block';
+                return;
+            }
+            document.getElementById('gender-empty').style.display = 'none';
+
+            const ctx = document.getElementById('genderPieChart').getContext('2d');
+            if (genderChartInstance) genderChartInstance.destroy();
+
+            genderChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            '#0EEDC6',
+                            '#8B5CF6',
+                            '#3B82F6',
+                            '#F59E0B',
+                            '#EC4899'
+                        ],
+                        borderColor: '#0D1527',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#94A3B8',
+                                font: { family: 'Inter', size: 12 },
+                                padding: 16
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1E293B',
+                            titleColor: '#F8FAFC',
+                            bodyColor: '#0EEDC6',
+                            borderColor: 'rgba(14, 237, 198, 0.2)',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAppointmentAnalytics(data) {
+            document.getElementById('stat-today-appointments').innerText = data.todayAppointments ?? 0;
+
+            document.getElementById('line-loading').style.display = 'none';
+
+            const dailyList = data.dailyAppointments || [];
+            const labels = dailyList.map(item => {
+                const parts = item.date.split('-');
+                return parts.length === 3 ? `${parts[1]}/${parts[2]}` : item.date;
+            });
+            const counts = dailyList.map(item => item.count);
+
+            if (dailyList.length === 0) {
+                document.getElementById('line-empty').style.display = 'block';
+                return;
+            }
+            document.getElementById('line-empty').style.display = 'none';
+
+            const ctx = document.getElementById('appointmentsLineChart').getContext('2d');
+            if (appointmentChartInstance) appointmentChartInstance.destroy();
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+            appointmentChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Appointments Count',
+                        data: counts,
+                        borderColor: '#60A5FA',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#3B82F6',
+                        pointBorderColor: '#FFFFFF',
+                        pointHoverRadius: 6,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94A3B8', precision: 0, font: { family: 'Inter', size: 11 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1E293B',
+                            titleColor: '#F8FAFC',
+                            bodyColor: '#60A5FA',
+                            borderColor: 'rgba(59, 130, 246, 0.3)',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDoctorAnalytics(data) {
+            document.getElementById('stat-total-doctors').innerText = data.totalDoctors ?? 0;
+
+            document.getElementById('doctor-loading').style.display = 'none';
+
+            const docList = data.doctorAppointments || [];
+            const labels = docList.map(d => d.doctorName);
+            const counts = docList.map(d => d.appointmentCount);
+
+            if (docList.length === 0) {
+                document.getElementById('doctor-empty').style.display = 'block';
+                return;
+            }
+            document.getElementById('doctor-empty').style.display = 'none';
+
+            const ctx = document.getElementById('doctorBarChart').getContext('2d');
+            if (doctorChartInstance) doctorChartInstance.destroy();
+
+            doctorChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Appointments',
+                        data: counts,
+                        backgroundColor: 'rgba(139, 92, 246, 0.75)',
+                        borderColor: '#8B5CF6',
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94A3B8', precision: 0, font: { family: 'Inter', size: 11 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1E293B',
+                            titleColor: '#F8FAFC',
+                            bodyColor: '#A78BFA',
+                            borderColor: 'rgba(139, 92, 246, 0.3)',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+
+    <style>
+        .spin-animation {
+            animation: spin 1s linear infinite;
+        }
+        @@keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        .loading-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @@keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+    </style>
+}
