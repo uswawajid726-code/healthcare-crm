@@ -1,121 +1,3 @@
-<<<<<<< HEAD
-async function loadNotifications() {
-
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-    if (!user.id) return;
-
-    try {
-
-        const response = await fetch(`/api/notifications?userId=${user.id}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        const notifications = await response.json();
-
-        const badge = document.getElementById('notif-badge');
-        const list = document.getElementById('notif-list');
-
-
-        // Update notification badge count
-        if (notifications.length > 0) {
-
-            badge.style.display = 'block';
-            badge.innerText = notifications.length;
-
-        } else {
-
-            badge.style.display = 'none';
-
-        }
-
-
-        // Empty notification state
-        if (!notifications.length) {
-
-            list.innerHTML = `
-            <div style="
-                padding:20px;
-                text-align:center;
-                color:var(--text-muted);
-            ">
-
-                <div style="font-size:30px;">
-                    🔔
-                </div>
-
-                <div style="
-                    margin-top:8px;
-                    font-weight:600;
-                ">
-                    No new notifications
-                </div>
-
-                <small>
-                    Appointment updates and alerts will appear here
-                </small>
-
-            </div>`;
-
-            return;
-        }
-
-
-
-        // Display notifications
-        list.innerHTML = notifications.map(n => `
-
-        <div onclick="handleNotificationClick(${n.id})"
-
-        style="
-            padding:14px;
-            border-bottom:1px solid var(--border-glass);
-            cursor:pointer;
-            transition:0.2s;
-        ">
-
-
-            <div style="
-                display:flex;
-                align-items:center;
-                gap:8px;
-                font-weight:600;
-                color:var(--text-main);
-                font-size:0.9rem;
-            ">
-
-                🔔 ${n.title}
-
-            </div>
-
-
-            <div style="
-                color:var(--text-muted);
-                font-size:0.8rem;
-                margin-top:6px;
-                line-height:1.4;
-            ">
-
-                ${n.message}
-
-            </div>
-
-
-            <div style="
-                color:var(--color-primary);
-                font-size:0.75rem;
-                margin-top:8px;
-            ">
-
-                ${new Date(n.createdAt).toLocaleString()}
-
-            </div>
-
-
-=======
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -183,59 +65,54 @@ async function loadNotifications() {
                     </li>
                 </ul>
             </nav>
->>>>>>> 95c392d (final fixes and project polish)
+
+                            </div>
+    </header>
+
+    <main class="container">
+        @RenderBody()
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            &copy; @DateTime.Now.Year - Healthcare CRM
         </div>
+    </footer>
 
-        `).join('');
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
+    <script>
+    function toggleNotifPanel() {
+        const panel = document.getElementById("notif-panel");
 
+        if (!panel) return;
 
-    } catch (error) {
+        if (panel.style.display === "block") {
+            panel.style.display = "none";
+        } else {
+            panel.style.display = "block";
 
-        console.error(
-            'Failed to load notifications:',
-            error
-        );
-
-    }
-
-}
-
-
-
-
-async function handleNotificationClick(id) {
-
-    const token = localStorage.getItem('token');
-
-
-    try {
-
-        await fetch(`/api/notifications/${id}/read`, {
-
-            method: 'PATCH',
-
-            headers: {
-                'Authorization': `Bearer ${token}`
+            if (typeof loadNotifications === "function") {
+                loadNotifications();
             }
-
-        });
-
-
-    } catch (error) {
-
-        console.error(
-            'Failed to mark notification as read:',
-            error
-        );
-
+        }
     }
 
+    window.addEventListener("click", function (event) {
+        const panel = document.getElementById("notif-panel");
+        const button = document.getElementById("notif-bell-btn");
 
-    document.getElementById('notif-panel').style.display = 'none';
+        if (!panel || !button) return;
 
+        if (!button.contains(event.target) && !panel.contains(event.target)) {
+            panel.style.display = "none";
+        }
+    });
+    </script>
 
-    // Refresh notification list
-    loadNotifications();
+    @await RenderSectionAsync("Scripts", required: false)
 
-}
+</body>
+</html>
